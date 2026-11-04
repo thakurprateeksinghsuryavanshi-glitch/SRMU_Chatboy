@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SRMU Admission Guide Chatbot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#1b2430;--mut:#5d6b7e;--pri:#0b4f9c;--pri-ink:#fff;--bot:#e8eef8;--line:#d9e0ec;--acc:#e08a00;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1520;--card:#18202d;--ink:#e8edf5;--mut:#9aa8bd;--pri:#5aa2ff;--pri-ink:#07101d;--bot:#222d3f;--line:#2b384c;--acc:#ffb347;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1520;--card:#18202d;--ink:#e8edf5;--mut:#9aa8bd;--pri:#5aa2ff;--pri-ink:#07101d;--bot:#222d3f;--line:#2b384c;--acc:#ffb347;color-scheme:dark}
+*{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center}
+.app{width:100%;max-width:720px;height:100%;display:flex;flex-direction:column;background:var(--card);border-left:1px solid var(--line);border-right:1px solid var(--line)}
+header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center}
+.logo{width:42px;height:42px;border-radius:50%;background:var(--pri);color:var(--pri-ink);display:grid;place-items:center;font-size:22px}
+header h1{font-size:17px;margin:0}header p{margin:0;font-size:13px;color:var(--mut)}
+#chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:86%;padding:10px 14px;border-radius:16px;word-wrap:break-word}
+.bot{background:var(--bot);border-bottom-left-radius:4px;align-self:flex-start}
+.me{background:var(--pri);color:var(--pri-ink);border-bottom-right-radius:4px;align-self:flex-end}
+.m ul{margin:6px 0 0;padding-left:20px}.m b{color:var(--pri)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-self:flex-start}
+.chip{border:1px solid var(--pri);background:transparent;color:var(--pri);padding:8px 14px;border-radius:20px;font:inherit;font-size:14px;cursor:pointer}
+.chip:hover{background:var(--pri);color:var(--pri-ink)}
+.note{font-size:12px;color:var(--mut);padding:0 16px 6px;text-align:center}
+footer{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+input{flex:1;padding:12px 14px;border-radius:24px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;min-width:0}
+button.send{border:0;background:var(--pri);color:var(--pri-ink);border-radius:24px;padding:0 20px;font:inherit;font-weight:600;cursor:pointer}
+a{color:var(--pri)}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="logo">🎓</div><div><h1>SRMU Admission Guide</h1><p>Find the right course for you</p></div></header>
+<div id="chat" aria-live="polite"></div>
+<div class="note">Guidance only. Confirm courses, fees and dates on the official SRMU website.</div>
+<footer><input id="inp" placeholder="Type here… e.g. I like coding" autocomplete="off"><button class="send" id="go">Send</button></footer>
+</div>
+<script>
+var OFFICIAL="https://www.srmu.ac.in";
+var P={
+ btech:{n:"B.Tech (CSE, AI/ML, Civil, Mechanical, Electrical)",w:"Best for maths and science lovers who want engineering and tech jobs."},
+ bca:{n:"BCA",w:"Good for computers and software careers; also leads to MCA."},
+ bba:{n:"BBA",w:"Good for management, marketing and starting your own business."},
+ bpharm:{n:"B.Pharm / D.Pharm",w:"For a career in medicines, pharma companies and drug stores."},
+ nurs:{n:"B.Sc Nursing / Allied Health",w:"For healthcare and hospital careers."},
+ agri:{n:"B.Sc Agriculture",w:"For farming science, agri-business and government agri jobs."},
+ bcom:{n:"B.Com",w:"For accounts, finance, banking and CA/CS preparation."},
+ law:{n:"LLB / BA LLB",w:"For court, corporate legal work and judiciary exams."},
+ ba:{n:"BA (Arts / Humanities)",w:"Good base for civil services, teaching and social sciences."},
+ jmc:{n:"Journalism & Mass Communication",w:"For media, content, PR and creative careers."},
+ bed:{n:"Education (B.Ed / D.El.Ed)",w:"For a teaching career."},
+ dip:{n:"Diploma / Polytechnic",w:"Short technical course after 10th with early job options."},
+ mba:{n:"MBA",w:"Postgraduate management degree for leadership roles."},
+ mtech:{n:"M.Tech / MCA",w:"Advanced tech degrees for specialist and research roles."},
+ pg:{n:"M.Pharm / LLM / MA / M.Com",w:"Postgraduate study in your own field."}
+};
+var chat=document.getElementById("chat"),inp=document.getElementById("inp");
+function scroll(){chat.scrollTop=chat.scrollHeight}
+function bot(html,chips){
+ var d=document.createElement("div");d.className="m bot";d.innerHTML=html;chat.appendChild(d);
+ if(chips){var c=document.createElement("div");c.className="chips";
+  chips.forEach(function(t){var b=document.createElement("button");b.className="chip";b.textContent=t;b.onclick=function(){c.remove();send(t)};c.appendChild(b)});
+  chat.appendChild(c)}
+ scroll()}
+function me(t){var d=document.createElement("div");d.className="m me";d.textContent=t;chat.appendChild(d);scroll()}
+function list(keys,intro){
+ return (intro||"Based on your answer, I recommend:")+"<ul>"+keys.map(function(k){return "<li><b>"+P[k].n+"</b> – "+P[k].w+"</li>"}).join("")+"</ul>"}
+var MAIN=["After 12th","After 10th","After Graduation","Admission process","Contact / Apply"];
+var AFTER=["Tell me my best match","Show other options","Start over"];
+function start(){bot("Hello! 👋 I’m the SRMU admission helper. I’ll suggest courses that fit you. <b>What is your current education level?</b>",["After 12th","After 10th","After Graduation"])}
+function reply(t){
+ var s=t.toLowerCase();
+ function has(){for(var i=0;i<arguments.length;i++)if(s.indexOf(arguments[i])>-1)return true;return false}
+ if(has("start over","restart","hi","hello","namaste")&&s.length<14){chat.innerHTML="";return start()}
+ if(has("after 10","10th","tenth","diploma","polytechnic"))return bot(list(["dip"],"After 10th, a good path is:")+"You can also continue 11th–12th and pick a stream later.",["After 12th","Admission process","Start over"]);
+ if(has("graduat","after ba","after b.tech","pg","master","post"))return bot("Which field are you in?",["I did B.Tech/BCA","I did BBA/B.Com","I did Pharmacy / Law / Arts"]);
+ if(has("i did b.tech","i did bca"))return bot(list(["mtech","mba"]),["Admission process","Start over"]);
+ if(has("i did bba","i did b.com"))return bot(list(["mba"]),["Admission process","Start over"]);
+ if(has("i did pharmacy","i did law"))return bot(list(["pg"]),["Admission process","Start over"]);
+ if(has("after 12","12th","twelfth","intermediate"))return bot("Great! <b>Which stream did you study in 12th?</b>",["PCM (Maths)","PCB (Biology)","Commerce","Arts"]);
+ if(has("pcm","maths","math"))return bot(list(["btech","bca","bba"]),["I like coding","I like business","Admission process"]);
+ if(has("pcb","biology","bio"))return bot(list(["bpharm","nurs","agri","bca"]),["Admission process","Start over"]);
+ if(has("commerce","account","finance","bank","ca "))return bot(list(["bcom","bba","law","bca"]),["Admission process","Start over"]);
+ if(has("arts","humanit","history","upsc","ias","civil serv"))return bot(list(["ba","law","jmc","bed"]),["Admission process","Start over"]);
+ if(has("cod","computer","software","program","ai","it job","tech","engineer"))return bot(list(["btech","bca","mtech"],"For a tech career, consider:"),["Admission process","Start over"]);
+ if(has("business","manage","market","startup","mba","bba"))return bot(list(["bba","mba","bcom"],"For business and management:"),["Admission process","Start over"]);
+ if(has("doctor","medic","pharm","nurs","health","hospital"))return bot(list(["bpharm","nurs"],"For healthcare careers:"),["Admission process","Start over"]);
+ if(has("law","lawyer","judge","court","advocate"))return bot(list(["law"],"For law:"),["Admission process","Start over"]);
+ if(has("farm","agri","kheti"))return bot(list(["agri"],"For agriculture:"),["Admission process","Start over"]);
+ if(has("media","journal","creative","anchor","film"))return bot(list(["jmc","ba"],"For media and creative work:"),["Admission process","Start over"]);
+ if(has("teach","education","b.ed","bed"))return bot(list(["bed","ba"],"For teaching:"),["Admission process","Start over"]);
+ if(has("process","how to apply","apply","admission","form","document","eligib"))return bot("<b>Typical admission steps</b><ul><li>Choose your course using this guide.</li><li>Check eligibility (marks and subjects) for that course.</li><li>Fill the online application form on the official website.</li><li>Keep ready: 10th and 12th marksheets, ID proof, photo, and category/transfer certificates if needed.</li><li>Attend counselling or entrance if required, then pay the fee to confirm your seat.</li></ul>Exact dates, fees and eligibility can change each year, so please verify them at <a href=\""+OFFICIAL+"\" target=\"_blank\" rel=\"noopener\">srmu.ac.in</a>.",["Contact / Apply","Start over"]);
+ if(has("contact","phone","address","location","where"))return bot("SRMU (Shri Ramswaroop Memorial University) is near Lucknow–Deva Road, Barabanki, Uttar Pradesh. For phone numbers and the latest address, open <a href=\""+OFFICIAL+"\" target=\"_blank\" rel=\"noopener\">the official website</a> and use its Admission / Contact page.",["Admission process","Start over"]);
+ if(has("fee","cost","scholar","hostel","placement"))return bot("Fees, scholarships, hostel and placement details change every session. Please check the latest numbers on <a href=\""+OFFICIAL+"\" target=\"_blank\" rel=\"noopener\">srmu.ac.in</a> or call the admission office.",["Admission process","Start over"]);
+ bot("I didn’t fully get that. Tell me your <b>education level</b> (10th, 12th, graduate) or an <b>interest</b> like coding, business, health, law, farming or media.",MAIN.slice(0,3).concat(["I like coding","I like business"]));
+}
+function send(t){t=(t||inp.value).trim();if(!t)return;inp.value="";me(t);
+ fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:t})})
+ .then(function(r){if(!r.ok)throw 0;return r.json()})
+ .then(function(d){if(d.restart){chat.innerHTML="";start()}else bot(d.html,d.chips)})
+ .catch(function(){setTimeout(function(){reply(t)},350)})}
+document.getElementById("go").onclick=function(){send()};
+inp.addEventListener("keydown",function(e){if(e.key==="Enter")send()});
+start();
+</script>
+</body>
+</html>
